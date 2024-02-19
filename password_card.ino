@@ -18,9 +18,14 @@
 #include <SPI.h>
 #include <SD.h>
 
+#include <USB.h>
+#include <USBHIDKeyboard.h>
+USBHIDKeyboard Keyboard;
+
 #include "csv_reader.h"
 
 #include <vector>
+#include <unordered_map>
 
 #define PASSWORD_CSV_FILENAME "/passwords.csv"
 
@@ -47,12 +52,9 @@ void draw(const std::vector<std::string>& lines) {
       M5Cardputer.Display.setTextColor(WHITE);
     }
 
-    M5Cardputer.Display.drawString(std::to_string(i).c_str(), 0, offset);
-    size_t lineOffset = stringOffset;
-    if (lineOffset > line.length()) {
-      lineOffset = line.length();
+    if (stringOffset < line.length()) {
+      M5Cardputer.Display.drawString(line.c_str() + stringOffset, 0, offset);
     }
-    M5Cardputer.Display.drawString(line.c_str() + lineOffset, 32, offset);
     offset += M5Cardputer.Display.fontHeight();
   }
 }
@@ -60,17 +62,25 @@ void draw(const std::vector<std::string>& lines) {
 CSV csv;
 
 void draw() {
-    std::vector<std::string> lines;
-    lines.reserve(csv.getEntries().size());
-    for (const auto& pair : csv.getEntries()) {
-      lines.emplace_back(pair.first);
-    }
-    draw(lines);
-    //draw(csv.getLines());
+  std::vector<std::string> lines;
+  lines.reserve(csv.getEntries().size());
+  for (const auto& pair : csv.getEntries()) {
+    lines.emplace_back(pair.first);
+  }
+  draw(lines);
 }
+
+struct CharInfo {
+  uint8_t hid;
+  uint8_t modifiers;
+};
+std::unordered_map<char, CharInfo> charInfos;
 
 void setup() {
     M5Cardputer.begin();
+    
+    //Keyboard.begin();
+    //USB.begin();
     
     M5Cardputer.Display.setRotation(1);
     M5Cardputer.Display.setTextDatum(top_left);
@@ -89,7 +99,43 @@ void setup() {
 
     csv = CSV(SD, PASSWORD_CSV_FILENAME, "name");
     draw();
-    //M5Cardputer.Display.drawString(std::to_string(lines.size()).c_str(), 0, 0);
+
+    for (auto x = 0; x < 14; ++x) {
+      for (auto y = 0; y < 4; ++y) {
+        Point2D_t point;
+        point.x = (int)x;
+        point.y = (int)y;
+        auto keyValue = M5Cardputer.Keyboard.getKeyValue(point);
+        CharInfo charInfo;
+        charInfo.hid = _kb_asciimap[keyValue.value_first];
+        charInfo.modifiers = 0;
+        charInfos.emplace(keyValue.value_first, charInfo);
+        charInfo.modifiers = 2;
+        charInfos.emplace(keyValue.value_second, charInfo);
+      }
+    }
+}
+
+void sendChar(char c) {
+  auto it = charInfos.find(c);
+  if (it == charInfos.end()) {
+    return;
+  }
+  /*
+  KeyReport report = {0};
+  report.modifiers = it->second.modifiers;
+  Keyboard.sendReport(&report);
+  report.keys[0] = it->second.hid;
+  Keyboard.sendReport(&report);
+  Keyboard.releaseAll();
+  */
+  Keyboard.press(c);
+  Keyboard.release(c);
+}
+
+void sendText(const char* text, uint64_t length) {
+  //Keyboard.write((const uint8_t*)text, length);
+  Serial.println(text);
 }
 
 void loop() {
@@ -113,6 +159,20 @@ void loop() {
             screenOffset = -selectedIndex * M5Cardputer.Display.fontHeight();
           }
           draw();
+        } else if (M5Cardputer.Keyboard.isKeyPressed('=')) {
+          size_t index = 0;
+          for (const auto& pair : csv.getEntries()) {
+            if (selectedIndex != index) {
+              ++index;
+              continue;
+            }
+
+            const auto& values = pair.second;
+            const auto& password = values[csv.getKeyIndex("name")];
+            sendText(password.c_str(), password.length());
+             
+            break;
+          }
         }
     }
 }
