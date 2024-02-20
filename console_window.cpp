@@ -19,6 +19,11 @@ void ConsoleWindow::update() {
 }
 
 bool ConsoleWindow::_update() {
+  if (M5Cardputer.BtnA.wasClicked() && _windows.size() > 1) {
+    _windows.pop_back();
+    return true;
+  }
+  
   if (!M5Cardputer.Keyboard.isChange() || !M5Cardputer.Keyboard.isPressed()) {
     return false;
   }

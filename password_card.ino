@@ -72,14 +72,16 @@ void setup() {
         continue;
       }
   
-    ConsoleWindow::openWindow(csvEntryActions, [&values = pair.second](size_t selectedIndex){
-      switch (selectedIndex) {
-      case 0: /* write */ {
-        const auto& password = values[csv.getKeyIndex("name")];
-        sendText(password.c_str(), password.length());
-        break;
-      }
-      }
+    ConsoleWindow::openWindow(csvEntryActions, [&values = pair.second](size_t action){
+      ConsoleWindow::openWindow(csv.getKeys(), [&values, action](size_t selectedIndex){
+        switch (action) {
+        case 0: /* write */ {
+          const auto& password = values[selectedIndex];
+          sendText(password.c_str(), password.length());
+          break;
+        }
+        }
+      });
     });
     
     break;
