@@ -1,7 +1,5 @@
 #pragma once
 
-#include <SD.h>
-
 #include <string>
 #include <map>
 #include <vector>
@@ -10,8 +8,10 @@ using CSVEntry = std::vector<std::string>;
 
 class CSV {
   public:
+    static void init();
+  
     CSV() = default;
-    CSV(fs::FS &fs, const char* filename, const char* mainKey);
+    CSV(const char* filename, const char* mainKey);
 
     size_t getKeyIndex(const std::string& key) const;
 

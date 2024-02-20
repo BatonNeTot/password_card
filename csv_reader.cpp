@@ -1,12 +1,31 @@
 #include "csv_reader.h"
 
 #include <M5Cardputer.h>
+#include <SPI.h>
+#include <SD.h>
+
+#define SD_SPI_SCK_PIN  40
+#define SD_SPI_MISO_PIN 39
+#define SD_SPI_MOSI_PIN 14
+#define SD_SPI_CS_PIN   12
+
+void CSV::init() {
+  // SD Card Initialization
+    SPI.begin(SD_SPI_SCK_PIN, SD_SPI_MISO_PIN, SD_SPI_MOSI_PIN, SD_SPI_CS_PIN);
+
+    if (!SD.begin(SD_SPI_CS_PIN, SPI, 25000000)) {
+        // Print a message if the SD card initialization
+        // fails orif the SD card does not exist.
+        // TODO error message
+        return;
+    }
+}
 
 class BufferedFileReader {
 public:
 
-  BufferedFileReader(fs::FS &fs, const char* filename)
-    : file(fs.open(filename)) {}
+  BufferedFileReader(const char* filename)
+    : file(SD.open(filename)) {}
 
   char read() {
     if (pos >= capacity) {
@@ -85,8 +104,8 @@ static void readRecord(std::vector<std::string>& container, BufferedFileReader& 
   }
 }
 
-CSV::CSV(fs::FS &fs, const char* filename, const char* mainKey) {
-  BufferedFileReader reader(fs, filename);
+CSV::CSV(const char* filename, const char* mainKey) {
+  BufferedFileReader reader(filename);
   StringBuilder builder;
 
   if (!reader.eof()) {
