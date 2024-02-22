@@ -195,7 +195,7 @@ void CSV::flush() {
   BufferedFileWriter writer(_filename.c_str());
   
   for (auto i = 0u; i < _keys.size(); ++i) {
-    if (i != 0u && _keys.size() > 0) {
+    if (i != 0u) {
       writer.write(',');
     }
     writeWord(writer, _keys[i]);

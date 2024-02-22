@@ -26,10 +26,11 @@ USBHIDKeyboard Keyboard;
 #include "fn_keyboard.h"
 
 #include <vector>
-#include <unordered_map>
+#include <chrono>
+#include <thread>
 
 #define PASSWORD_CSV_FILENAME "/passwords.csv"
-#define DEBUG 1
+#define DEBUG 0
 
 CSV csv;
 
@@ -37,7 +38,27 @@ void sendText(const char* text, uint64_t length) {
 #if DEBUG
   Serial.println(text);
 #else
-  Keyboard.write((const uint8_t*)text, length);
+  for (auto i = 0u; i < length; ++i) {
+    if (i != 0) {
+      std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    }
+    char c = text[i];
+    uint8_t k = _kb_asciimap[c];
+    if (k & 0x80) {
+      // on linux it might not register shift immidietly  
+      Keyboard.press(KEY_LEFT_SHIFT);
+      std::this_thread::sleep_for(std::chrono::milliseconds(10));
+      Keyboard.press(c);
+      std::this_thread::sleep_for(std::chrono::milliseconds(10));
+      Keyboard.release(c);
+      std::this_thread::sleep_for(std::chrono::milliseconds(10));
+      Keyboard.release(KEY_LEFT_SHIFT);
+    } else {
+      Keyboard.pressRaw(k);
+      std::this_thread::sleep_for(std::chrono::milliseconds(30));
+      Keyboard.releaseRaw(k);
+    }
+  }
 #endif
 }
 
