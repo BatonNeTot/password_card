@@ -16,14 +16,20 @@ class CSV {
     size_t getKeyIndex(const std::string& key) const;
 
     inline const std::vector<std::string>& getKeys() const {
-      return keys;
+      return _keys;
     }
 
-    inline const std::map<std::string, CSVEntry>& getEntries() const {
-      return entries;
+    inline std::map<std::string, CSVEntry>& getEntries() {
+      return _entries;
     }
+    inline const std::map<std::string, CSVEntry>& getEntries() const {
+      return _entries;
+    }
+
+    void flush();
     
   private:
-    std::vector<std::string> keys;
-    std::map<std::string, CSVEntry> entries;
+    std::string _filename;
+    std::vector<std::string> _keys;
+    std::map<std::string, CSVEntry> _entries;
 };

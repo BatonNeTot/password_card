@@ -22,34 +22,37 @@ USBHIDKeyboard Keyboard;
 
 #include "csv_reader.h"
 #include "console_window.h"
+#include "edit_window.h"
+#include "fn_keyboard.h"
 
 #include <vector>
 #include <unordered_map>
 
 #define PASSWORD_CSV_FILENAME "/passwords.csv"
+#define DEBUG 1
 
 CSV csv;
 
-void sendChar(char c) {
-  Keyboard.press(c);
-  Keyboard.release(c);
-}
-
 void sendText(const char* text, uint64_t length) {
-  //Keyboard.write((const uint8_t*)text, length);
+#if DEBUG
   Serial.println(text);
+#else
+  Keyboard.write((const uint8_t*)text, length);
+#endif
 }
 
 std::vector<std::string> csvEntryActions = {
   "write",
-  "update"
+  "edit"
 };
 
 void setup() {
   M5Cardputer.begin();
-  
-  //Keyboard.begin();
-  //USB.begin();
+
+#if !DEBUG
+  Keyboard.begin();
+  USB.begin();
+#endif
   
   M5Cardputer.Display.setRotation(1);
   M5Cardputer.Display.setTextDatum(top_left);
@@ -64,20 +67,28 @@ void setup() {
   for (const auto& pair : csv.getEntries()) {
     lines.emplace_back(pair.first);
   }
-  ConsoleWindow::openWindow(lines, [](size_t selectedIndex){
+  ConsoleWindow::open<ConsoleWindow>(lines, [](size_t selectedIndex){
     size_t index = 0;
-    for (const auto& pair : csv.getEntries()) {
+    for (auto& pair : csv.getEntries()) {
       if (selectedIndex != index) {
         ++index;
         continue;
       }
   
-    ConsoleWindow::openWindow(csvEntryActions, [&values = pair.second](size_t action){
-      ConsoleWindow::openWindow(csv.getKeys(), [&values, action](size_t selectedIndex){
+    ConsoleWindow::open<ConsoleWindow>(csvEntryActions, [&values = pair.second](size_t action){
+      ConsoleWindow::open<ConsoleWindow>(csv.getKeys(), [&values, action](size_t selectedIndex){
         switch (action) {
         case 0: /* write */ {
-          const auto& password = values[selectedIndex];
-          sendText(password.c_str(), password.length());
+          const auto& value = values[selectedIndex];
+          sendText(value.c_str(), value.length());
+          break;
+        }
+        case 1: /* edit */ {
+          auto& value = values[selectedIndex];
+          ConsoleWindow::open<EditWindow>(value, [&value](const std::string& newValue){
+            value = newValue;
+            csv.flush();
+          });
           break;
         }
         }
@@ -92,4 +103,5 @@ void setup() {
 void loop() {
     M5Cardputer.update();
     ConsoleWindow::update();
+    FnKeyboard::update();
 }

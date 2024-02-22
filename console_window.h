@@ -3,23 +3,32 @@
 #include <vector>
 #include <string>
 #include <functional>
+#include <memory>
 
 class ConsoleWindow {
 public:
-  static void openWindow(const std::vector<std::string>& options, std::function<void(size_t)> action);
+  template <class T, class... Args>
+  static void open(Args&&... args) {
+    _windows.emplace_back(std::unique_ptr<T>(new T(std::forward<Args>(args)...)));
+    _windows.back()->draw();
+  }
 
   static void update();
-  static bool popWindow();
+  static bool pop();
   
-  static size_t textHeight();
-  
+  static size_t fontWidth();
+  static size_t fontHeight();
+
+  virtual void draw();
+
+protected:
   ConsoleWindow() = default;
   ConsoleWindow(const std::vector<std::string>& options, std::function<void(size_t)> action);
 
-  void draw();
-
 private:
-  bool _update();
+  static std::vector<std::unique_ptr<ConsoleWindow>> _windows;
+  
+  virtual bool _update();
 
   std::vector<std::string> _options;
   std::function<void(size_t)> _action;

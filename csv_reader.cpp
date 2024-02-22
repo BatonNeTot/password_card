@@ -104,39 +104,111 @@ static void readRecord(std::vector<std::string>& container, BufferedFileReader& 
   }
 }
 
-CSV::CSV(const char* filename, const char* mainKey) {
+CSV::CSV(const char* filename, const char* mainKey)
+  : _filename(filename) {
   BufferedFileReader reader(filename);
   StringBuilder builder;
 
   if (!reader.eof()) {
-    readRecord(keys, reader, builder);
+    readRecord(_keys, reader, builder);
   }
   
   auto mainKeyIndex = getKeyIndex(mainKey);
 
   while (!reader.eof()) {
     CSVEntry entry;
-    entry.reserve(keys.size());
+    entry.reserve(_keys.size());
     readRecord(entry, reader, builder);
 
-    if (entry.size() < keys.size()) {
-      entry.resize(keys.size());
+    if (entry.size() < _keys.size()) {
+      entry.resize(_keys.size());
     }
 
     auto& mainValue = entry[mainKeyIndex];
-    while (entries.find(mainValue) != entries.end()) {
+    while (_entries.find(mainValue) != _entries.end()) {
       mainValue += " (1)";
     }
     
-    entries.emplace(mainValue, entry);
+    _entries.emplace(mainValue, entry);
   }
 }
 
 size_t CSV::getKeyIndex(const std::string& key) const {
-  for (auto i = 0u; i < keys.size(); ++i) {
-    if (keys[i] == key) {
+  for (auto i = 0u; i < _keys.size(); ++i) {
+    if (_keys[i] == key) {
       return i;
     }
   }
   return -1;
+}
+
+class BufferedFileWriter {
+public:
+
+  BufferedFileWriter(const char* filename)
+    : file(SD.open(filename, FILE_WRITE)) {}
+  ~BufferedFileWriter() {
+    flush();
+  }
+
+  void write(char c) {
+    if (length >= sizeof(buffer)) {
+      flush();
+    }
+    buffer[length++] = c;
+  }
+
+  void flush() {
+    file.write((const uint8_t*)buffer, length);
+    length = 0;
+  }
+
+private:
+  File file;
+  char buffer[512];
+  size_t length = 0;
+};
+
+static void writeWord(BufferedFileWriter& writer, const std::string& value) {
+  bool escaped = false;
+  for (auto c : value) {
+    if (c == '"' || c == '\n') {
+      escaped = true;
+      break;
+    }
+  }
+  if (escaped) {
+    writer.write('"');
+  }
+  for (auto c : value) {
+    if (escaped && c == '"') {
+      writer.write('"');
+    }
+    writer.write(c);
+  }
+  if (escaped) {
+    writer.write('"');
+  }
+}
+
+void CSV::flush() {
+  BufferedFileWriter writer(_filename.c_str());
+  
+  for (auto i = 0u; i < _keys.size(); ++i) {
+    if (i != 0u && _keys.size() > 0) {
+      writer.write(',');
+    }
+    writeWord(writer, _keys[i]);
+  }
+  writer.write('\n');
+
+  for (const auto& pair : _entries) {
+    for (auto i = 0u; i < pair.second.size(); ++i) {
+      if (i != 0u && pair.second.size() > 0) {
+        writer.write(',');
+      }
+      writeWord(writer, pair.second[i]);
+    }
+    writer.write('\n');
+  }
 }
