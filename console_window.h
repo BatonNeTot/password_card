@@ -9,6 +9,9 @@ public:
   static void openWindow(const std::vector<std::string>& options, std::function<void(size_t)> action);
 
   static void update();
+  static bool popWindow();
+  
+  static size_t textHeight();
   
   ConsoleWindow() = default;
   ConsoleWindow(const std::vector<std::string>& options, std::function<void(size_t)> action);
