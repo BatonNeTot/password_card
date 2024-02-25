@@ -3,12 +3,12 @@
 
 class EditWindow : public ConsoleWindow {
 public:
-  void draw() override;
 
 private:
   friend ConsoleWindow;
   EditWindow(const std::string& value, std::function<void(const std::string&)> action);
   
+  void _draw() override;
   bool _update() override;
 
   std::string _value;  

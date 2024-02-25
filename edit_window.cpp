@@ -7,7 +7,7 @@
 EditWindow::EditWindow(const std::string& value, std::function<void(const std::string&)> action)
   : _value(value), _action(action) {}
   
-void EditWindow::draw() {
+void EditWindow::_draw() {
   size_t x = 0;
   size_t y = 0;
   char buffer[2];
@@ -25,10 +25,6 @@ void EditWindow::draw() {
 }
 
 bool EditWindow::_update() {
-  if (!M5Cardputer.Keyboard.isChange() || !M5Cardputer.Keyboard.isPressed()) {
-    return false;
-  }
-
   Keyboard_Class::KeysState status = M5Cardputer.Keyboard.keysState();
   if (!status.ctrl && status.enter) {
     _action(_value);
