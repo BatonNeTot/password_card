@@ -8,8 +8,6 @@ using CSVEntry = std::vector<std::string>;
 
 class CSV {
   public:
-    static void init();
-  
     CSV() = default;
     CSV(const char* filename, const char* mainKey);
 
@@ -17,6 +15,9 @@ class CSV {
 
     inline const std::vector<std::string>& getKeys() const {
       return _keys;
+    }
+    inline size_t getMainKeyIndex() const {
+      return _mainKeyIndex;
     }
 
     inline std::map<std::string, CSVEntry>& getEntries() {
@@ -31,5 +32,6 @@ class CSV {
   private:
     std::string _filename;
     std::vector<std::string> _keys;
+    size_t _mainKeyIndex;
     std::map<std::string, CSVEntry> _entries;
 };

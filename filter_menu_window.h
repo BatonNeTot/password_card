@@ -3,14 +3,24 @@
 
 class FilterMenuWindow : public MenuWindow {
 public:
+  void validateSelector() override;
+  
+protected:
+  FilterMenuWindow(const std::vector<std::string>& options);
+  
+  void _serialize(BufferedFileWriter& writer) override;
+  void _deserialize(BufferedFileReader& reader) override;
 
 private:
   friend ConsoleWindow;
-  FilterMenuWindow(const std::vector<std::string>& options, std::function<void(size_t, const std::string&)> action);
   
   void _draw() override;
   bool _update() override;
+  void _afterBack() override;
+
+  void updateFilter();
 
   std::string _filter;
-  std::vector<std::string> _unfilteredOptions;
+  const std::vector<std::string>& _unfilteredOptions;
+  std::vector<std::string> _filteredOptions;
 };

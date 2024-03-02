@@ -4,8 +4,8 @@
 
 #include "fn_keyboard.h"
 
-EditWindow::EditWindow(const std::string& value, std::function<void(const std::string&)> action)
-  : _value(value), _action(action) {}
+EditWindow::EditWindow(const std::string& value)
+  : _value(value) {}
   
 void EditWindow::_draw() {
   size_t x = 0;
@@ -25,9 +25,13 @@ void EditWindow::_draw() {
 }
 
 bool EditWindow::_update() {
+  if (!FnKeyboard::isPressed()) {
+    return false;
+  }
+  
   Keyboard_Class::KeysState status = M5Cardputer.Keyboard.keysState();
   if (!status.ctrl && status.enter) {
-    _action(_value);
+    onApply(_value);
     pop();
     return true;
   }
@@ -46,4 +50,14 @@ bool EditWindow::_update() {
   }
   
   return false;
+}
+
+void EditWindow::_serialize(BufferedFileWriter& writer) {
+  ConsoleWindow::_serialize(writer);
+  writer.write(_value);
+}
+
+void EditWindow::_deserialize(BufferedFileReader& reader) {
+  ConsoleWindow::_deserialize(reader);
+  _value = reader.readString();
 }

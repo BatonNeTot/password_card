@@ -7,23 +7,34 @@
 #include <algorithm>
 #include <cctype>
 
-FilterMenuWindow::FilterMenuWindow(const std::vector<std::string>& options, std::function<void(size_t, const std::string&)> action)
-  : MenuWindow(options, action), _unfilteredOptions(options) {}
+FilterMenuWindow::FilterMenuWindow(const std::vector<std::string>& options)
+  : MenuWindow(_filteredOptions), _unfilteredOptions(options), _filteredOptions(options) {}
 
+#define LINE_SIZE 2
+  
 void FilterMenuWindow::_draw() {
   M5Cardputer.Display.setTextColor(WHITE);
   M5Cardputer.Display.drawString(_filter.c_str(), left(), top());
   
-  size_t lineSize = 2;
   M5Cardputer.Display.setColor(WHITE);
-  M5Cardputer.Display.fillRect(left(), top() + fontHeight(), width(), lineSize);
+  M5Cardputer.Display.fillRect(left(), top() + fontHeight(), width(), LINE_SIZE);
   
-  setClipping(left(), top() + fontHeight() + lineSize, right(), bottom());
+  setClipping(left(), top() + fontHeight() + LINE_SIZE, right(), bottom());
   MenuWindow::_draw();
-  setClipping(left(), top() - fontHeight() - lineSize, right(), bottom());
+  setClipping(left(), top() - fontHeight() - LINE_SIZE, right(), bottom());
+}
+
+void FilterMenuWindow::validateSelector() {
+  setClipping(left(), top() + fontHeight() + LINE_SIZE, right(), bottom());
+  MenuWindow::validateSelector();
+  setClipping(left(), top() - fontHeight() - LINE_SIZE, right(), bottom());
 }
 
 bool FilterMenuWindow::_update() {
+  if (!FnKeyboard::isPressed()) {
+    return false;
+  }
+  
   if (MenuWindow::_update()) {
     return true;
   }
@@ -43,11 +54,21 @@ bool FilterMenuWindow::_update() {
     _filter += c;
   }
 
+  updateFilter();
+
+  return true;
+}
+
+void FilterMenuWindow::_afterBack() {
+  updateFilter();
+}
+
+void FilterMenuWindow::updateFilter() {
   if (_filter.empty()) {
-    setOptions(_unfilteredOptions);
+    _filteredOptions = _unfilteredOptions;
   } else {
-    std::vector<std::string> options;
-    options.reserve(_unfilteredOptions.size());
+    _filteredOptions.clear();
+    _filteredOptions.reserve(_unfilteredOptions.size());
 
     std::string lowerFilter = _filter;
     std::transform(lowerFilter.begin(), lowerFilter.end(), lowerFilter.begin(),
@@ -59,12 +80,21 @@ bool FilterMenuWindow::_update() {
         [](unsigned char c){ return std::tolower(c); });
 
       if (lowerOption.find(lowerFilter) != std::string::npos) {
-        options.emplace_back(option);
+        _filteredOptions.emplace_back(option);
       }
     }
-    
-    setOptions(options);
   }
+    
+  validateSelector();
+}
 
-  return true;
+void FilterMenuWindow::_serialize(BufferedFileWriter& writer) {
+  MenuWindow::_serialize(writer);
+  writer.write(_filter);
+}
+
+void FilterMenuWindow::_deserialize(BufferedFileReader& reader) {
+  MenuWindow::_deserialize(reader);
+  _filter = reader.readString();
+  updateFilter();
 }

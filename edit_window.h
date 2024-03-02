@@ -2,15 +2,19 @@
 #include "console_window.h"
 
 class EditWindow : public ConsoleWindow {
-public:
+protected:
+  EditWindow(const std::string& value);
 
 private:
   friend ConsoleWindow;
-  EditWindow(const std::string& value, std::function<void(const std::string&)> action);
   
   void _draw() override;
   bool _update() override;
+  
+  void _serialize(BufferedFileWriter& writer) override;
+  void _deserialize(BufferedFileReader& reader) override;
+  
+  virtual void onApply(const std::string& value) = 0;
 
   std::string _value;  
-  std::function<void(const std::string&)> _action;
 };

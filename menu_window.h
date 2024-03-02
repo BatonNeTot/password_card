@@ -2,22 +2,33 @@
 #include "console_window.h"
 
 class MenuWindow : public ConsoleWindow {
-protected:
-  MenuWindow(const std::vector<std::string>& options, std::function<void(size_t, const std::string&)> action);
+public:
+  
+  virtual void validateSelector();
 
-  inline void setOptions(const std::vector<std::string>& options) {
-    _options = options;
-    _selectedIndex = std::min(_selectedIndex, _options.size() - 1);
+  inline size_t getSelectedIndex() const {
+    return _selectedIndex;
   }
+
+  inline const std::string& getSelectedOption() const {
+    return _options[_selectedIndex];
+  }
+  
+protected:
+  MenuWindow(const std::vector<std::string>& options);
   
   void _draw() override;
   bool _update() override;
+  
+  void _serialize(BufferedFileWriter& writer) override;
+  void _deserialize(BufferedFileReader& reader) override;
 
 private:
   friend ConsoleWindow;
 
-  std::vector<std::string> _options;
-  std::function<void(size_t, const std::string&)> _action;
+  virtual void onEnter() {};
+
+  const std::vector<std::string>& _options;
 
   size_t _screenOffset = 0;
   size_t _selectedIndex = 0;

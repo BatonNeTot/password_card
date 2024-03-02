@@ -3,6 +3,8 @@
 #include <M5Cardputer.h>
 
 namespace FnKeyboard {
+
+  boolean _isPressed = false;
   
   char getTypedChar() {
     Keyboard_Class::KeysState status = M5Cardputer.Keyboard.keysState();
@@ -16,6 +18,12 @@ namespace FnKeyboard {
     return M5Cardputer.Keyboard.isKeyPressed(KEY_BACKSPACE);
   }
 
-  void update() {}
+  void update() {
+    _isPressed = M5Cardputer.Keyboard.isChange() && M5Cardputer.Keyboard.isPressed();
+  }
+
+  bool isPressed() {
+    return _isPressed;
+  }
   
 }

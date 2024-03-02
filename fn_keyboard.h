@@ -7,4 +7,6 @@ namespace FnKeyboard {
   bool isBackspace();
 
   void update();
+  
+  bool isPressed();
 }

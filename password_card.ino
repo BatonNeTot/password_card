@@ -21,6 +21,7 @@
 USBHIDKeyboard Keyboard;
 
 #include "csv_reader.h"
+#include "filesystem.h"
 #include "console_window.h"
 #include "filter_menu_window.h"
 #include "edit_window.h"
@@ -31,9 +32,22 @@ USBHIDKeyboard Keyboard;
 #include <thread>
 
 #define PASSWORD_CSV_FILENAME "/passwords.csv"
-#define DEBUG 1
+
+#define DEBUG 0
 
 CSV csv;
+std::vector<std::string> csvEntryNames;
+auto csvEntryIt = csv.getEntries().end();
+size_t csvSelectedEntryIndex = -1;
+size_t csvAction = -1;
+
+void updateCsvEntryNames() {
+  csvEntryNames.clear();
+  csvEntryNames.reserve(csv.getEntries().size());
+  for (const auto& pair : csv.getEntries()) {
+    csvEntryNames.emplace_back(pair.first);
+  }
+}
 
 void sendText(const char* text, uint64_t length) {
 #if DEBUG
@@ -63,10 +77,132 @@ void sendText(const char* text, uint64_t length) {
 #endif
 }
 
+#define ENTRIES_WINDOW 0
+#define ACTION_WINDOW 1
+#define VALUES_WINDOW 2
+#define EDIT_WINDOW 3
+
+class EditValueWindow : public EditWindow {
+  friend ConsoleWindow;
+  EditValueWindow()
+    : EditWindow(csvEntryIt->second[csvSelectedEntryIndex]) {}
+    
+  size_t _getId() const override {
+    return EDIT_WINDOW;
+  }
+
+  void onApply(const std::string& newValue) override {
+    auto& value = csvEntryIt->second[csvSelectedEntryIndex];
+    if (value == newValue) {
+      return;
+    }
+    
+    value = newValue;
+    auto newEntry = csv.getEntries().emplace(std::move(newValue), std::move(csvEntryIt->second)).first;
+    csv.getEntries().erase(csvEntryIt);
+    csvEntryIt = newEntry;
+    updateCsvEntryNames();
+    
+    csv.flush();
+  }
+
+  static ConsoleWindow::DeserializerRegister _deserializer;
+};
+
+class ValuesWindow : public MenuWindow {
+  friend ConsoleWindow;
+  ValuesWindow()
+    : MenuWindow(csv.getKeys()) {}
+    
+  size_t _getId() const override {
+    return VALUES_WINDOW;
+  }
+
+  void onEnter() override {
+    csvSelectedEntryIndex = getSelectedIndex();
+    switch (csvAction) {
+    case 0: /* write */ {
+      const auto& value = csvEntryIt->second[csvSelectedEntryIndex];
+      sendText(value.c_str(), value.length());
+      break;
+    }
+    case 1: /* edit */ {
+      ConsoleWindow::open<EditValueWindow>();
+      break;
+    }
+    }
+  }
+  
+  static ConsoleWindow::DeserializerRegister _deserializer;
+};
+
 std::vector<std::string> csvEntryActions = {
   "write",
   "edit"
 };
+
+class ActionWindow : public MenuWindow {
+  friend ConsoleWindow;
+  ActionWindow()
+    : MenuWindow(csvEntryActions) {}
+    
+  size_t _getId() const override {
+    return ACTION_WINDOW;
+  }
+
+  void onEnter() override {
+    csvAction = getSelectedIndex();
+    ConsoleWindow::open<ValuesWindow>();
+  }
+
+  void _deserialize(BufferedFileReader& reader) override {
+    MenuWindow::_deserialize(reader);
+    csvAction = getSelectedIndex();
+  }
+  
+  static ConsoleWindow::DeserializerRegister _deserializer;
+};
+
+class EntriesWindow : public FilterMenuWindow {
+  friend ConsoleWindow;
+  EntriesWindow()
+    : FilterMenuWindow(csvEntryNames) {}
+    
+  size_t _getId() const override {
+    return ENTRIES_WINDOW;
+  }
+
+  void onEnter() override {
+    csvEntryIt = csv.getEntries().find(getSelectedOption());
+    if (csvEntryIt == csv.getEntries().end()) {
+      return;
+    }
+    ConsoleWindow::open<ActionWindow>();
+  }
+
+  void _deserialize(BufferedFileReader& reader) override {
+    FilterMenuWindow::_deserialize(reader);
+    csvEntryIt = csv.getEntries().find(getSelectedOption());
+  }
+  
+  static ConsoleWindow::DeserializerRegister _deserializer;
+};
+
+ConsoleWindow::DeserializerRegister EditValueWindow::_deserializer(EDIT_WINDOW, [](){ 
+  return new EditValueWindow(); 
+  });
+
+ConsoleWindow::DeserializerRegister ValuesWindow::_deserializer(VALUES_WINDOW, [](){ 
+  return new ValuesWindow(); 
+  });
+
+ConsoleWindow::DeserializerRegister ActionWindow::_deserializer(ACTION_WINDOW, [](){ 
+  return new ActionWindow(); 
+  });
+
+ConsoleWindow::DeserializerRegister EntriesWindow::_deserializer(ENTRIES_WINDOW, [](){ 
+  return new EntriesWindow(); 
+  });
 
 void setup() {
   M5Cardputer.begin();
@@ -81,35 +217,14 @@ void setup() {
   M5Cardputer.Display.setTextFont(&fonts::AsciiFont8x16);
   M5Cardputer.Display.setTextSize(1);
   
-  CSV::init();
+  Filesystem::init();
   
   csv = CSV(PASSWORD_CSV_FILENAME, "name");
-  std::vector<std::string> lines;
-  lines.reserve(csv.getEntries().size());
-  for (const auto& pair : csv.getEntries()) {
-    lines.emplace_back(pair.first);
+  updateCsvEntryNames();
+
+  if (!ConsoleWindow::deserializeStack()) {
+    ConsoleWindow::open<EntriesWindow>();
   }
-  ConsoleWindow::open<FilterMenuWindow>(lines, [](size_t, const std::string& name){
-    ConsoleWindow::open<MenuWindow>(csvEntryActions, [&values = csv.getEntries()[name]](size_t action, const std::string&){
-      ConsoleWindow::open<MenuWindow>(csv.getKeys(), [&values, action](size_t selectedIndex, const std::string&){
-        switch (action) {
-        case 0: /* write */ {
-          const auto& value = values[selectedIndex];
-          sendText(value.c_str(), value.length());
-          break;
-        }
-        case 1: /* edit */ {
-          auto& value = values[selectedIndex];
-          ConsoleWindow::open<EditWindow>(value, [&value](const std::string& newValue){
-            value = newValue;
-            csv.flush();
-          });
-          break;
-        }
-        }
-      });
-    });
-  });
 }
 
 void loop() {
