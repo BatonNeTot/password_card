@@ -38,6 +38,7 @@ USBHIDKeyboard Keyboard;
 CSV csv;
 std::vector<std::string> csvEntryNames;
 auto csvEntryIt = csv.getEntries().end();
+std::string csvEntryName;
 size_t csvSelectedEntryIndex = -1;
 size_t csvAction = -1;
 
@@ -98,10 +99,13 @@ class EditValueWindow : public EditWindow {
     }
     
     value = newValue;
-    auto newEntry = csv.getEntries().emplace(std::move(newValue), std::move(csvEntryIt->second)).first;
-    csv.getEntries().erase(csvEntryIt);
-    csvEntryIt = newEntry;
-    updateCsvEntryNames();
+    if (csvSelectedEntryIndex == csv.getMainKeyIndex()) {
+      csvEntryName = newValue;
+      auto newEntry = csv.getEntries().emplace(std::move(newValue), std::move(csvEntryIt->second)).first;
+      csv.getEntries().erase(csvEntryIt);
+      csvEntryIt = newEntry;
+      updateCsvEntryNames();
+    }
     
     csv.flush();
   }
@@ -109,10 +113,10 @@ class EditValueWindow : public EditWindow {
   static ConsoleWindow::DeserializerRegister _deserializer;
 };
 
-class ValuesWindow : public MenuWindow {
+class ValuesWindow : public TitleMenuWindow {
   friend ConsoleWindow;
   ValuesWindow()
-    : MenuWindow(csv.getKeys()) {}
+    : TitleMenuWindow(csvEntryName, csv.getKeys()) {}
     
   size_t _getId() const override {
     return VALUES_WINDOW;
@@ -174,15 +178,14 @@ class EntriesWindow : public FilterMenuWindow {
 
   void onEnter() override {
     csvEntryIt = csv.getEntries().find(getSelectedOption());
-    if (csvEntryIt == csv.getEntries().end()) {
-      return;
-    }
+    csvEntryName = csvEntryIt->first;
     ConsoleWindow::open<ActionWindow>();
   }
 
   void _deserialize(BufferedFileReader& reader) override {
     FilterMenuWindow::_deserialize(reader);
     csvEntryIt = csv.getEntries().find(getSelectedOption());
+    csvEntryName = csvEntryIt->first;
   }
   
   static ConsoleWindow::DeserializerRegister _deserializer;

@@ -8,27 +8,7 @@
 #include <cctype>
 
 FilterMenuWindow::FilterMenuWindow(const std::vector<std::string>& options)
-  : MenuWindow(_filteredOptions), _unfilteredOptions(options), _filteredOptions(options) {}
-
-#define LINE_SIZE 2
-  
-void FilterMenuWindow::_draw() {
-  M5Cardputer.Display.setTextColor(WHITE);
-  M5Cardputer.Display.drawString(_filter.c_str(), left(), top());
-  
-  M5Cardputer.Display.setColor(WHITE);
-  M5Cardputer.Display.fillRect(left(), top() + fontHeight(), width(), LINE_SIZE);
-  
-  setClipping(left(), top() + fontHeight() + LINE_SIZE, right(), bottom());
-  MenuWindow::_draw();
-  setClipping(left(), top() - fontHeight() - LINE_SIZE, right(), bottom());
-}
-
-void FilterMenuWindow::validateSelector() {
-  setClipping(left(), top() + fontHeight() + LINE_SIZE, right(), bottom());
-  MenuWindow::validateSelector();
-  setClipping(left(), top() - fontHeight() - LINE_SIZE, right(), bottom());
-}
+  : TitleMenuWindow(_filter, _filteredOptions), _unfilteredOptions(options), _filteredOptions(options) {}
 
 bool FilterMenuWindow::_update() {
   if (!FnKeyboard::isPressed()) {

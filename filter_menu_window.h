@@ -1,10 +1,7 @@
 #pragma once
-#include "menu_window.h"
+#include "title_menu_window.h"
 
-class FilterMenuWindow : public MenuWindow {
-public:
-  void validateSelector() override;
-  
+class FilterMenuWindow : public TitleMenuWindow {
 protected:
   FilterMenuWindow(const std::vector<std::string>& options);
   
@@ -14,7 +11,6 @@ protected:
 private:
   friend ConsoleWindow;
   
-  void _draw() override;
   bool _update() override;
   void _afterBack() override;
 
